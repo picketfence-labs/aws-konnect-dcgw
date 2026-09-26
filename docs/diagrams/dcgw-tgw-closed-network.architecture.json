@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Transit Gatewayを利用したCloud GatewayとVPCの閉塞ネットワーク接続",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/picketfence-labs/aws-konnect-dcgw",
+      "provider": "github",
+      "revision": "a30dd1f6b3c3557f4ae521d47217997c19266fe6"
+    },
+    "viewBox": [1390, 652]
+  },
+  "components": [
+    {
+      "id": "konnect_cp",
+      "type": "external",
+      "label": "Konnect Control Plane",
+      "sublabel": "Gateway Service／Route の設定",
+      "pos": [50, 75],
+      "size": [190, 68],
+      "sources": [{ "path": "modules/konnect_dcgw/main.tf" }]
+    },
+    {
+      "id": "kong_att",
+      "type": "cloud",
+      "label": "Kong 側 TGW アタッチメント",
+      "sublabel": "cidr_blocks: 10.1.0.0/24・10.2.0.0/24",
+      "pos": [502.5, 240],
+      "size": [215, 74],
+      "sources": [{ "path": "modules/transit_gateway/main.tf" }]
+    },
+    {
+      "id": "dcgw_dp",
+      "type": "security",
+      "label": "Dedicated Cloud Gateway",
+      "sublabel": "api_access = private",
+      "pos": [42.5, 240],
+      "size": [205, 68],
+      "sources": [{ "path": "modules/konnect_dcgw/main.tf" }]
+    },
+    {
+      "id": "tgw",
+      "type": "cloud",
+      "label": "Transit Gateway",
+      "sublabel": "RAM 共有・自動承認",
+      "pos": [517.5, 420],
+      "size": [185, 70],
+      "sources": [{ "path": "modules/transit_gateway/main.tf" }]
+    },
+    {
+      "id": "gateway_phz",
+      "type": "cloud",
+      "label": "Route 53 Private Hosted Zone",
+      "sublabel": "gateways.konghq.com → DP の private IP",
+      "pos": [495, 525],
+      "size": [230, 74],
+      "sources": [{ "path": "modules/gateway_dns/main.tf" }]
+    },
+    {
+      "id": "test_att",
+      "type": "cloud",
+      "label": "VPC アタッチメント",
+      "sublabel": "RT: 10.0.0.0/23 → TGW",
+      "pos": [282.5, 420],
+      "size": [190, 70],
+      "sources": [{ "path": "modules/test_tasks/main.tf" }]
+    },
+    {
+      "id": "test_task",
+      "type": "backend",
+      "label": "テストタスク（手動実行）",
+      "sublabel": "ECS Fargate・curl / Locust",
+      "pos": [37.5, 420],
+      "size": [215, 70],
+      "sources": [{ "path": "modules/test_tasks/main.tf" }]
+    },
+    {
+      "id": "app_att",
+      "type": "cloud",
+      "label": "VPC アタッチメント",
+      "sublabel": "RT: 10.0.0.0/23 → TGW",
+      "pos": [727.5, 420],
+      "size": [190, 70],
+      "sources": [{ "path": "modules/app_vpc/main.tf" }]
+    },
+    {
+      "id": "app_alb",
+      "type": "backend",
+      "label": "内部 ALB",
+      "sublabel": "HTTP :80・internal",
+      "pos": [967.5, 420],
+      "size": [170, 68],
+      "sources": [{ "path": "modules/app_vpc/main.tf" }]
+    },
+    {
+      "id": "httpbin",
+      "type": "backend",
+      "label": "httpbin",
+      "sublabel": "ECS Fargate :80",
+      "pos": [1182.5, 420],
+      "size": [170, 68],
+      "sources": [{ "path": "modules/app_vpc/main.tf" }]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Kong Konnect（SaaS・US geo）", "wraps": ["konnect_cp"], "pad": 24 },
+    { "kind": "region", "label": "Kong 管理 AWS アカウント（ap-northeast-1）", "wraps": ["kong_att", "dcgw_dp"], "pad": 24 },
+    { "kind": "security-group", "label": "Cloud Gateway ネットワーク 10.0.0.0/23", "wraps": ["kong_att", "dcgw_dp"], "pad": 14 },
+    { "kind": "region", "label": "自 AWS アカウント（ap-northeast-1）", "wraps": ["tgw", "gateway_phz", "test_att", "test_task", "app_att", "app_alb", "httpbin"], "pad": 22 },
+    { "kind": "security-group", "label": "test-vpc 10.2.0.0/24", "wraps": ["test_att", "test_task"], "pad": 14 },
+    { "kind": "security-group", "label": "app-vpc 10.1.0.0/24", "wraps": ["app_att", "app_alb", "httpbin"], "pad": 14 }
+  ],
+  "connections": [
+    { "id": "s1", "from": "test_att", "to": "tgw", "variant": "dashed", "label": "アタッチ", "labelAt": [495, 435] },
+    { "id": "s2", "from": "app_att", "to": "tgw", "variant": "dashed", "label": "アタッチ", "labelAt": [715, 504] },
+    { "id": "s3", "from": "kong_att", "to": "tgw", "variant": "dashed", "label": "アタッチ（Kong 作成）", "fromSide": "bottom", "toSide": "top", "labelAt": [610, 360] },
+    { "id": "m1", "from": "konnect_cp", "to": "dcgw_dp", "variant": "security", "label": "設定の配信", "fromSide": "bottom", "toSide": "top", "labelAt": [145, 190] },
+    { "id": "r1", "from": "test_task", "to": "gateway_phz", "variant": "default", "label": "① 名前解決", "fromSide": "bottom", "toSide": "left", "via": [[145, 530], [457.5, 530], [457.5, 562]], "labelAt": [357.5, 520] },
+    { "id": "r2", "from": "test_task", "to": "dcgw_dp", "variant": "emphasis", "label": "② HTTPS /echo（TGW 経由）", "fromSide": "top", "toSide": "bottom", "labelAt": [145, 360], "width": 3 },
+    { "id": "r3", "from": "dcgw_dp", "to": "app_alb", "variant": "emphasis", "label": "③ HTTP :80 /anything（TGW 経由）", "fromSide": "right", "toSide": "top", "via": [[357.5, 274], [357.5, 150], [1052.5, 150]], "labelAt": [757.5, 150], "width": 3 },
+    { "id": "r4", "from": "app_alb", "to": "httpbin", "variant": "emphasis", "label": "④ :80", "labelAt": [1160, 440], "width": 3 }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "線の見方",
+      "items": [
+        "破線＝アタッチメント（静的な接続。矢印は接続先を示し、通信の向きではない）。太線＝テスト時のrequest。",
+        "②③は必ずTGWとアタッチメントを通る。応答は同じ経路を逆にたどる。"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "閉塞の範囲",
+      "items": [
+        "DCGWはapi_access = privateで、Internetからの入口はない。各VPCのNAT経由の外向き通信は省略。",
+        "test-vpcとapp-vpcの間に直接のルートはない。"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "前提",
+      "items": [
+        "2段階のapply完了後の状態。",
+        "CP–DP間の管理の経路はKongが管理し、TGWは通らない（repoに記載がないため一般知識による）。"
+      ]
+    }
+  ]
+}

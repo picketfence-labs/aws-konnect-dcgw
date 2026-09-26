@@ -8,28 +8,9 @@ AWS Transit Gateway 経由で DCGW に接続します。
 
 ## 全体構成
 
-```mermaid
-flowchart TB
-  subgraph kong["Kong 管理 AWS アカウント"]
-    cgw["Cloud Gateway Network VPC<br/>10.0.0.0/23 (private)<br/>Dedicated データプレーン (DCGW)"]
-  end
+[![Transit Gatewayを利用したCloud GatewayとVPCの閉塞ネットワーク接続](docs/diagrams/dcgw-tgw-closed-network.png)](https://picketfence-labs.github.io/diagrams/37f64008b439/)
 
-  subgraph own["自 AWS アカウント"]
-    tgw{{"Transit Gateway"}}
-
-    subgraph testvpc["test-vpc 10.2.0.0/24"]
-      client["テストクライアント<br/>(後続タスクで追加)"]
-    end
-
-    subgraph appvpc["app-vpc 10.1.0.0/24"]
-      alb["内部 ALB"] --> ecs["ECS Fargate<br/>httpbin :80"]
-    end
-  end
-
-  cgw <-->|"TGW アタッチメント<br/>(RAM 共有 + 自動承認)"| tgw
-  testvpc <-->|"VPC アタッチメント"| tgw
-  appvpc <-->|"VPC アタッチメント"| tgw
-```
+図をクリックすると、インタラクティブ版（Archify）を開きます。図のソースは[`docs/diagrams/dcgw-tgw-closed-network.architecture.json`](docs/diagrams/dcgw-tgw-closed-network.architecture.json)です。
 
 > **テスト経路**: `test-vpc → TGW → Kong 網 (private DCGW) → TGW → app-vpc (httpbin)`
 > （DCGW は `private` のため外部公開なし。閉域網内の test-vpc から疎通する）
