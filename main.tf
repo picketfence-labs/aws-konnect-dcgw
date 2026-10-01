@@ -144,7 +144,7 @@ module "gateway_dns" {
   enabled     = var.enable_gateway_private_dns
   zone_name   = var.gateway_dns_zone_name
   record_name = try(module.konnect_dcgw.public_edge_dns, "")
-  record_ips  = try(module.konnect_dcgw.dataplane_private_ips, [])
+  record_ips  = var.enable_gateway_private_dns ? module.konnect_dcgw.dataplane_private_ips : []
   vpc_ids     = [module.app_vpc.vpc_id, module.test_vpc.vpc_id]
 
   tags = var.tags
